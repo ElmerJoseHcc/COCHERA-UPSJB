@@ -6,180 +6,283 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 
-public class DatabaseManager {
-    private final DatabaseHelper dbHelper;
+    public class DatabaseManager {
+        private static final String URL = "jdbc:sqlserver://<SERVER>:<PORT>;databaseName=<DATABASE_NAME>";
+        private static final String USER = "<USERNAME>";
+        private static final String PASSWORD = "<PASSWORD>";
 
-    public DatabaseManager(Context context) {
-        dbHelper = new DatabaseHelper(context);
-    }
+        private Connection connection;
 
+        public DatabaseManager(Context context) {
+            // Establecer la conexión a la base de datos remota
+            try {
+                connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            } catch (SQLException e) {
+                Log.e("DB", "Error al conectar a la base de datos", e);
+            }
+        }
+    // Método para insertar una persona
     public long insertarPersona(String nombre, String apellido, String carrera, String ciclo, String dni, String telefono) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        try {
+            // Obtener el id_carrera basado en el nombre de la carrera
+            int idCarrera = obtenerIdCarrera(carrera); // Cambiar el método aquí
+            if (idCarrera == -1) {
+                return -1; // Error si no se encuentra la carrera
+            }
 
-        // Obtener el id_carrera basado en el nombre de la carrera
-        int idCarrera = obtenerIdCarrera(carrera); // Cambiamos el método aquí
-        if (idCarrera == -1) {
-            return -1; // Error si no se encuentra la carrera
+            String query = "INSERT INTO persona (nombre, apellido, carrera, ciclo, dni, telefono) VALUES (?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement stmt = connection.prepareStatement(query)) {
+                stmt.setString(1, nombre);
+                stmt.setString(2, apellido);
+                stmt.setInt(3, idCarrera);
+                stmt.setString(4, ciclo);
+                stmt.setString(5, dni);
+                stmt.setString(6, telefono);
+
+                return stmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            Log.e("DB", "Error al insertar persona", e);
+        }
+        return -1;
+    }
+
+        public ArrayList<String> obtenerCarreras() {
+            ArrayList<String> carreras = new ArrayList<>();
+            try {
+                String query = "SELECT nombre_carrera FROM carrera";
+                try (PreparedStatement stmt = connection.prepareStatement(query);
+                     ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        carreras.add(rs.getString("nombre_carrera"));
+                    }
+                }
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener carreras", e);
+            }
+            return carreras;
         }
 
-        ContentValues values = new ContentValues();
-        values.put("nombre", nombre);
-        values.put("apellido", apellido);
-        values.put("carrera", idCarrera); // Almacenar el ID de la carrera
-        values.put("ciclo", ciclo);
-        values.put("dni", dni);
-        values.put("telefono", telefono);
-
-        return db.insert("persona", null, values);
-    }
 
 
-    public ArrayList<String> obtenerCarreras() {
-        ArrayList<String> carreras = new ArrayList<>();
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT nombre_carrera FROM carrera", null);
+        public long insertarAuto(String placa, String modelo, int idPersona) {
+            try {
+                String query = "INSERT INTO auto (placa, modelo, id_persona) VALUES (?, ?, ?)";
+                try (PreparedStatement stmt = connection.prepareStatement(query)) {
+                    stmt.setString(1, placa);
+                    stmt.setString(2, modelo);
+                    stmt.setInt(3, idPersona);
 
-        while (cursor.moveToNext()) {
-            carreras.add(cursor.getString(0)); // Obtén el nombre de la carrera
+                    return stmt.executeUpdate();
+                }
+            } catch (SQLException e) {
+                Log.e("DB", "Error al insertar auto", e);
+            }
+            return -1;
         }
-        cursor.close();
-        return carreras;
-    }
 
 
+        public long insertarRegistro(int idAuto, String horaIngreso, String estado) {
+            try {
+                String query = "INSERT INTO registros (id_auto, hora_ingreso, estado) VALUES (?, ?, ?)";
+                try (PreparedStatement stmt = connection.prepareStatement(query)) {
+                    stmt.setInt(1, idAuto);
+                    stmt.setString(2, horaIngreso);
+                    stmt.setString(3, estado);
 
-    public long insertarAuto(String placa, String modelo, int idPersona) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("placa", placa);
-        values.put("modelo", modelo);
-        values.put("id_persona", idPersona);
-
-        return db.insert("auto", null, values);
-    }
-
-    public long insertarRegistro(int idAuto, String horaIngreso, String estado) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("id_auto", idAuto);
-        values.put("hora_ingreso", horaIngreso);
-        values.put("estado", estado);
-
-        return db.insert("registros", null, values);
-    }
-
-    public Cursor obtenerPersonas() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        return db.rawQuery("SELECT * FROM persona", null);
-    }
-
-    public Cursor obtenerAutosPorPersona(int idPersona) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        return db.rawQuery("SELECT * FROM auto WHERE id_persona = ?", new String[]{String.valueOf(idPersona)});
-    }
-
-    // Buscar auto por placa
-    public Cursor buscarAutoPorPlaca(String placa) {
-        SQLiteDatabase db = this.dbHelper.getReadableDatabase();
-        return db.rawQuery("SELECT * FROM auto WHERE placa = ?", new String[]{placa});
-    }
-
-    // Obtener el último registro del auto
-    public Cursor obtenerUltimoRegistro(String idAuto) {
-        SQLiteDatabase db = this.dbHelper.getReadableDatabase();
-        return db.rawQuery("SELECT * FROM registro WHERE id_auto = ? ORDER BY id_registro DESC LIMIT 1", new String[]{idAuto});
-    }
-
-    // Actualizar la hora de salida
-    public void actualizarHoraSalida(String idAuto, String horaSalida) {
-        SQLiteDatabase db = this.dbHelper.getReadableDatabase();
-        db.execSQL("UPDATE registro SET hora_salida = ? WHERE id_auto = ? AND hora_salida IS NULL", new Object[]{horaSalida, idAuto});
-    }
-
-    // Insertar un nuevo registro
-    public long insertarRegistro(String idAuto, String horaIngreso) {
-        SQLiteDatabase db = this.dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("id_auto", idAuto);
-        values.put("hora_ingreso", horaIngreso);
-        return db.insert("registro", null, values);
-    }
-
-    public boolean registrarIngreso(int idAuto, String horaIngreso) {
-        SQLiteDatabase db = this.dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("id_auto", idAuto);
-        values.put("hora_ingreso", horaIngreso);
-        values.put("estado", "INGRESADO");
-
-        long result = db.insert("registros", null, values);
-        return result != -1;
-    }
-
-
-    public long registrarSalida(String placa) {
-        // Lógica para registrar la salida en la base de datos (por ejemplo, actualizar la fecha de salida)
-        SQLiteDatabase db = this.dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("fecha_salida", System.currentTimeMillis());  // Registra la fecha de salida
-
-        return db.update("autos", values, "placa=?", new String[]{placa});
-    }
-
-    public Cursor obtenerAutosDentro() {
-        SQLiteDatabase db = this.dbHelper.getReadableDatabase();
-        // Consulta para obtener los registros con estado 'dentro' o sin hora_salida
-        return db.rawQuery("SELECT a.placa, r.hora_ingreso FROM registros r " +
-                "JOIN auto a ON r.id_auto = a.id_auto " +
-                "WHERE (r.hora_salida IS NULL OR r.estado = 'dentro')", null);
-    }
-
-
-    public Cursor obtenerAutoPorPlaca(String placa) {
-        SQLiteDatabase db = this.dbHelper.getReadableDatabase();
-        // Definimos la consulta SQL
-        String query = "SELECT * FROM auto WHERE placa = ?";
-        // Ejecutamos la consulta pasando la placa como parámetro
-        return db.rawQuery(query, new String[]{placa});
-    }
-
-    public Cursor obtenerAutoPorPlaca1(String placa) {
-        Log.d("DB", "Buscando auto con placa: " + placa);
-        SQLiteDatabase db = this.dbHelper.getReadableDatabase();
-        // Asegúrate de que la consulta esté buscando bien en la tabla 'registros' y 'auto'
-        return db.rawQuery("SELECT estado FROM registros WHERE id_auto = (SELECT id_auto FROM auto WHERE placa = ?)", new String[]{placa});
-    }
-
-
-    public boolean registrarSalida(String placa, String horaSalida) {
-        SQLiteDatabase db = this.dbHelper.getWritableDatabase();
-
-        // Actualizamos el registro de salida para el auto con la placa proporcionada
-        ContentValues contentValues = new ContentValues();
-        contentValues.put("hora_salida", horaSalida);
-        contentValues.put("estado", "salido");  // Marcamos como "salido"
-
-        // Actualizamos el registro en la base de datos
-        int rowsUpdated = db.update("registros", contentValues, "id_auto = (SELECT id_auto FROM auto WHERE placa = ? AND estado = 'ingresado')", new String[]{placa});
-
-        // Si se actualizó alguna fila, la salida se registró correctamente
-        return rowsUpdated > 0;
-    }
-
-    private int obtenerIdCarrera(String nombreCarrera) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT id_carrera FROM carrera WHERE nombre_carrera = ?", new String[]{nombreCarrera});
-
-        if (cursor.moveToFirst()) {
-            int id = cursor.getInt(0); // Obtén el id_carrera
-            cursor.close();
-            return id;
+                    return stmt.executeUpdate();
+                }
+            } catch (SQLException e) {
+                Log.e("DB", "Error al insertar registro", e);
+            }
+            return -1;
         }
-        cursor.close();
-        return -1; // Retorna -1 si no se encuentra la carrera
-    }
+
+        private int obtenerIdCarrera(String nombreCarrera) {
+            try {
+                String query = "SELECT id_carrera FROM carrera WHERE nombre_carrera = ?";
+                try (PreparedStatement stmt = connection.prepareStatement(query)) {
+                    stmt.setString(1, nombreCarrera);
+                    ResultSet rs = stmt.executeQuery();
+                    if (rs.next()) {
+                        return rs.getInt("id_carrera");
+                    }
+                }
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener ID de carrera", e);
+            }
+            return -1;
+        }
+
+        // Obtener todas las personas
+        public ResultSet obtenerPersonas() {
+            try {
+                String query = "SELECT * FROM persona";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener personas", e);
+            }
+            return null;
+        }
+
+        // Obtener autos por persona
+        public ResultSet obtenerAutosPorPersona(int idPersona) {
+            try {
+                String query = "SELECT * FROM auto WHERE id_persona = ?";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setInt(1, idPersona);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener autos por persona", e);
+            }
+            return null;
+        }
+
+        // Buscar auto por placa
+        public ResultSet buscarAutoPorPlaca(String placa) {
+            try {
+                String query = "SELECT * FROM auto WHERE placa = ?";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, placa);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al buscar auto por placa", e);
+            }
+            return null;
+        }
+
+        // Obtener el último registro de un auto
+        public ResultSet obtenerUltimoRegistro(String idAuto) {
+            try {
+                String query = "SELECT * FROM registro WHERE id_auto = ? ORDER BY id_registro DESC LIMIT 1";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, idAuto);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener último registro", e);
+            }
+            return null;
+        }
+
+        // Actualizar la hora de salida
+        public void actualizarHoraSalida(String idAuto, String horaSalida) {
+            try {
+                String query = "UPDATE registro SET hora_salida = ? WHERE id_auto = ? AND hora_salida IS NULL";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, horaSalida);
+                stmt.setString(2, idAuto);
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al actualizar hora de salida", e);
+            }
+        }
+
+        // Insertar un nuevo registro
+        public long insertarRegistro(String idAuto, String horaIngreso) {
+            try {
+                String query = "INSERT INTO registro (id_auto, hora_ingreso) VALUES (?, ?)";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, idAuto);
+                stmt.setString(2, horaIngreso);
+                return stmt.executeUpdate();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al insertar registro", e);
+            }
+            return -1;
+        }
+
+        // Registrar ingreso de un auto
+        public boolean registrarIngreso(int idAuto, String horaIngreso) {
+            try {
+                String query = "INSERT INTO registros (id_auto, hora_ingreso, estado) VALUES (?, ?, ?)";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setInt(1, idAuto);
+                stmt.setString(2, horaIngreso);
+                stmt.setString(3, "INGRESADO");
+                return stmt.executeUpdate() > 0;
+            } catch (SQLException e) {
+                Log.e("DB", "Error al registrar ingreso", e);
+            }
+            return false;
+        }
+
+        // Registrar salida de un auto
+        public long registrarSalida(String placa) {
+            try {
+                String query = "UPDATE autos SET fecha_salida = ? WHERE placa = ?";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setLong(1, System.currentTimeMillis());
+                stmt.setString(2, placa);
+                return stmt.executeUpdate();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al registrar salida", e);
+            }
+            return -1;
+        }
+
+        // Obtener autos dentro
+        public ResultSet obtenerAutosDentro() {
+            try {
+                String query = "SELECT a.placa, r.hora_ingreso FROM registros r " +
+                        "JOIN auto a ON r.id_auto = a.id_auto " +
+                        "WHERE r.hora_salida IS NULL OR r.estado = 'dentro'";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener autos dentro", e);
+            }
+            return null;
+        }
+
+        // Obtener auto por placa
+        public ResultSet obtenerAutoPorPlaca(String placa) {
+            try {
+                String query = "SELECT * FROM auto WHERE placa = ?";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, placa);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener auto por placa", e);
+            }
+            return null;
+        }
+
+        // Obtener estado del auto por placa
+        public ResultSet obtenerAutoPorPlaca1(String placa) {
+            try {
+                String query = "SELECT estado FROM registros WHERE id_auto = (SELECT id_auto FROM auto WHERE placa = ?)";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, placa);
+                return stmt.executeQuery();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al obtener estado del auto por placa", e);
+            }
+            return null;
+        }
+
+        // Registrar salida con hora
+        public boolean registrarSalida(String placa, String horaSalida) {
+            try {
+                String query = "UPDATE registros SET hora_salida = ?, estado = 'salido' WHERE id_auto = (SELECT id_auto FROM auto WHERE placa = ? AND estado = 'ingresado')";
+                PreparedStatement stmt = connection.prepareStatement(query);
+                stmt.setString(1, horaSalida);
+                stmt.setString(2, placa);
+                return stmt.executeUpdate() > 0;
+            } catch (SQLException e) {
+                Log.e("DB", "Error al registrar salida con hora", e);
+            }
+            return false;
+        }
+
+
 
 
 

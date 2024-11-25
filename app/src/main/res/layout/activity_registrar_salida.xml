@@ -7,7 +7,13 @@
 
     <Button
         android:id="@+id/btnRegistrarSalida"
-        android:layout_width="wrap_content"
+        android:layout_width="371dp"
         android:layout_height="wrap_content"
-        android:text="Registrar Salida" />
+        android:text="Escanear QR para Salida" />
+
+    <Button
+        android:id="@+id/btnSubirImagen2"
+        android:layout_width="370dp"
+        android:layout_height="wrap_content"
+        android:text="Subir Imagen" />
 </LinearLayout>

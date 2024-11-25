@@ -10,22 +10,35 @@
         android:orientation="vertical">
 
         <!-- Campo Placa -->
+        <TextView
+            android:id="@+id/textSeleccioneCarrera3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ingrese la placa del vehiculo:"
+            android:textColor="@android:color/holo_red_dark"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
         <EditText
             android:id="@+id/edtPlaca"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Placa del Auto"
+            android:hint="Placa"
             android:inputType="text" />
 
         <!-- Campo Modelo -->
-        <EditText
-            android:id="@+id/edtModelo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Modelo del Auto"
-            android:inputType="text" />
 
         <!-- Selector de Persona -->
+
+        <TextView
+            android:id="@+id/textSeleccioneCarrera2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Seleccione al propietario:"
+            android:textColor="@android:color/holo_red_dark"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
         <Spinner
             android:id="@+id/spinnerPersona"
             android:layout_width="match_parent"
@@ -53,7 +66,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
             android:layout_marginTop="16dp"
-            android:text="Compartir QR" />
+            android:text="Guardar y Compartir" />
 
 
     </LinearLayout>

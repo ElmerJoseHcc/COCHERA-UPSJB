@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -21,6 +22,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -41,48 +46,93 @@ public class RegistroAutoActivity extends AppCompatActivity {
         imageViewQR = findViewById(R.id.imageViewQR);
 
         EditText edtPlaca = findViewById(R.id.edtPlaca);
-        EditText edtModelo = findViewById(R.id.edtModelo);
         spinnerPersona = findViewById(R.id.spinnerPersona);
         Button btnGuardarAuto = findViewById(R.id.btnGuardarAuto);
         Button btnCompartirQR = findViewById(R.id.btnCompartirQR);
-
         cargarPersonasEnSpinner();
-
         btnGuardarAuto.setOnClickListener(new View.OnClickListener() {
+
+            // Método para insertar el auto
+            private boolean insertarAutoRemoto(String placa, int id_persona) {
+                Connection connection = null;
+                PreparedStatement stmt = null;
+
+                try {
+                    // Establecer conexión
+                    connection = new ConexionSQL().conectionclass();
+
+                    // Depurar los datos que se van a insertar
+                    Log.d("DB", "Placa: " + placa + ", Id_persona: " + id_persona);
+
+                    // Consulta SQL corregida (sin el modelo)
+                    String query = "INSERT INTO auto (placa, id_persona) VALUES (?, ?)";
+                    stmt = connection.prepareStatement(query);
+                    stmt.setString(1, placa);
+                    stmt.setInt(2, id_persona);
+
+                    // Ejecutar la consulta
+                    int rowsInserted = stmt.executeUpdate();
+
+                    // Verificar el resultado
+                    if (rowsInserted > 0) {
+                        Log.d("DB", "Inserción exitosa.");
+                        return true;
+                    } else {
+                        Log.d("DB", "Inserción fallida. No se insertaron filas.");
+                        return false;
+                    }
+                } catch (SQLException e) {
+                    // Registrar el error detallado
+                    Log.e("DB", "Error al insertar auto", e);
+                    return false;
+                } finally {
+                    try {
+                        if (stmt != null) stmt.close();
+                        if (connection != null) connection.close();
+                    } catch (SQLException e) {
+                        Log.e("DB", "Error al cerrar recursos", e);
+                    }
+                }
+            }
+
+
+
+
             @Override
             public void onClick(View view) {
                 String placa = edtPlaca.getText().toString().trim();
-                String modelo = edtModelo.getText().toString().trim();
                 String nombrePersona = spinnerPersona.getSelectedItem().toString();
-                String dniPersona = personasMap.get(nombrePersona);
+                String idPersona = personasMap.get(nombrePersona); // Cambiado a `id_persona`
 
-                // Validar que todos los campos estén completos
-                if (placa.isEmpty() || modelo.isEmpty() || dniPersona == null) {
-                    Toast.makeText(RegistroAutoActivity.this, "Completa todos los campos", Toast.LENGTH_SHORT).show();
-                    return;
-                }
 
-                // Registrar el auto solo si los campos están completos
-                long resultado = dbManager.insertarAuto(placa, modelo, Integer.parseInt(dniPersona));
-                if (resultado > 0) {
-                    // Generar y mostrar el código QR solo si la inserción fue exitosa
-                    qrBitmap = QRUtils.generarQRCode(placa);
-                    if (qrBitmap != null) {
-                        imageViewQR.setImageBitmap(qrBitmap);
-                        Toast.makeText(RegistroAutoActivity.this, "Auto registrado y QR generado", Toast.LENGTH_SHORT).show();
+                // Convertir `id_persona` a entero antes de pasar al método
+                try {
+                    int idPersonaInt = Integer.parseInt(idPersona);
+
+                    // Llamar al método para insertar el auto
+                    if (insertarAutoRemoto(placa, idPersonaInt)) {
+                        qrBitmap = QRUtils.generarQRCode(placa);
+                        if (qrBitmap != null) {
+                            imageViewQR.setImageBitmap(qrBitmap);
+                            Toast.makeText(RegistroAutoActivity.this, "Auto registrado y QR generado", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(RegistroAutoActivity.this, "Error al generar el QR", Toast.LENGTH_SHORT).show();
+                        }
                     } else {
-                        Toast.makeText(RegistroAutoActivity.this, "Error al generar el QR", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RegistroAutoActivity.this, "Error al registrar auto", Toast.LENGTH_SHORT).show();
                     }
-                } else {
-                    // Mostrar un mensaje de error solo si la inserción no fue exitosa
-                    Toast.makeText(RegistroAutoActivity.this, "Error al registrar auto", Toast.LENGTH_SHORT).show();
+                } catch (NumberFormatException e) {
+                    Toast.makeText(RegistroAutoActivity.this, "ID de Persona inválido", Toast.LENGTH_SHORT).show();
+                    Log.e("DB", "Error de formato en ID Persona", e);
                 }
 
-                // Limpiar los campos
+                // Limpiar campos
                 edtPlaca.setText("");
-                edtModelo.setText("");
             }
         });
+
+
+
 
         btnCompartirQR.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -100,22 +150,48 @@ public class RegistroAutoActivity extends AppCompatActivity {
         ArrayList<String> nombresPersonas = new ArrayList<>();
         personasMap = new HashMap<>();
 
-        // Consultar personas de la base de datos
-        Cursor cursor = dbManager.obtenerPersonas();
-        if (cursor.moveToFirst()) {
-            do {
-                @SuppressLint("Range") String nombre = cursor.getString(cursor.getColumnIndex("nombre"));
-                @SuppressLint("Range") String dni = cursor.getString(cursor.getColumnIndex("dni"));
-                nombresPersonas.add(nombre);
-                personasMap.put(nombre, dni); // Relacionar nombre con DNI
-            } while (cursor.moveToNext());
-        }
+        // Consulta a la base de datos remota
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ResultSet resultSet = null;
 
-        // Configurar el Spinner con los nombres de las personas
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, nombresPersonas);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerPersona.setAdapter(adapter);
+        try {
+            // Establecer la conexión con la base de datos remota
+            connection = new ConexionSQL().conectionclass();
+
+            // Consultar personas de la base de datos remota
+            String query = "SELECT nombre, id_persona FROM persona";
+            stmt = connection.prepareStatement(query);
+            resultSet = stmt.executeQuery();
+
+            // Verificar si se encontraron personas
+            while (resultSet.next()) {
+                String nombre = resultSet.getString("nombre");
+                String idPersona = resultSet.getString("id_persona");
+
+                // Agregar nombre al ArrayList y relacionarlo con el DNI en el HashMap
+                nombresPersonas.add(nombre);
+                personasMap.put(nombre, idPersona);
+            }
+
+            // Configurar el Spinner con los nombres de las personas
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, nombresPersonas);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerPersona.setAdapter(adapter);
+
+        } catch (SQLException e) {
+            Log.e("DB", "Error al cargar personas en el Spinner", e);
+        } finally {
+            try {
+                if (resultSet != null) resultSet.close();
+                if (stmt != null) stmt.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                Log.e("DB", "Error al cerrar recursos", e);
+            }
+        }
     }
+
 
     @SuppressLint("NewApi")
     private void compartirQR() {

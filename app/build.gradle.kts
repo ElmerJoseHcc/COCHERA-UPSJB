@@ -6,6 +6,8 @@ plugins {
 
 
 android {
+
+   
     namespace = "com.example.registroautosqr"
     compileSdk = 34
 
@@ -50,9 +52,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    buildToolsVersion = "34.0.0"
 }
 
 dependencies {
+    implementation("com.microsoft.sqlserver:mssql-jdbc:9.4.1.jre8")
+    implementation(files("libs/jtds-1.3.1.jar")) // Ruta al archivo descargado
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)

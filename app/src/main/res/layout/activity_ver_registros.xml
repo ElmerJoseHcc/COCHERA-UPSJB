@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".VerRegistrosActivity"
+    tools:ignore="VisualLintBounds">
+
+    <TextView
+        android:id="@+id/txtConsultarRegistro"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="80dp"
+        android:layout_marginBottom="6dp"
+        android:text="CONSULTAR REGISTRO"
+        android:textAlignment="center"
+        android:textColor="#B00020"
+        android:textSize="34sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/BuscarPlaca"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/txtUltimosRegistros"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="ULTIMOS REGISTROS:"
+        android:textAlignment="center"
+        android:textColor="#B00020"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@+id/verSalida"
+        tools:layout_editor_absoluteX="0dp" />
+
+    <TextView
+        android:id="@+id/txtPlaca"
+        android:layout_width="84dp"
+        android:layout_height="43dp"
+        android:layout_marginTop="20dp"
+        android:text="Placa:"
+        android:textAlignment="center"
+        android:textColor="#B00020"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtConsultarRegistro"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/txtUltimoIngreso"
+        android:layout_width="189dp"
+        android:layout_height="39dp"
+        android:layout_marginBottom="20dp"
+        android:text="Ultimo Ingreso:"
+        android:textAlignment="center"
+        android:textColor="#B00020"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/verIngreso"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:ignore="HardcodedText,TextSizeCheck" />
+
+    <TextView
+        android:id="@+id/txtUltimaSalida"
+        android:layout_width="189dp"
+        android:layout_height="39dp"
+        android:text="Ultima Salida:"
+        android:textAlignment="center"
+        android:textColor="#B00020"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/verSalida"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:ignore="HardcodedText" />
+
+    <EditText
+        android:id="@+id/BuscarPlaca"
+        android:layout_width="263dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="22dp"
+        android:ems="10"
+        android:inputType="text"
+        app:layout_constraintBottom_toTopOf="@+id/txtUltimoIngreso"
+        app:layout_constraintEnd_toStartOf="@+id/btnBuscar"
+        app:layout_constraintStart_toEndOf="@+id/txtPlaca"
+        app:layout_constraintTop_toBottomOf="@+id/txtConsultarRegistro"
+        tools:ignore="Autofill,LabelFor,SpeakableTextPresentCheck" />
+
+    <ImageButton
+        android:id="@+id/btnBuscar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:src="@android:drawable/ic_menu_search"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtConsultarRegistro"
+        tools:ignore="MissingConstraints,SpeakableTextPresentCheck" />
+
+    <TextView
+        android:id="@+id/verIngreso"
+        android:layout_width="377dp"
+        android:layout_height="46dp"
+        android:layout_marginBottom="20dp"
+        app:layout_constraintBottom_toTopOf="@+id/txtUltimaSalida"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/verSalida"
+        android:layout_width="377dp"
+        android:layout_height="46dp"
+        android:layout_marginTop="15dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.529"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtUltimaSalida" />
+
+    <ListView
+        android:id="@+id/verRegistros"
+        android:layout_width="409dp"
+        android:layout_height="324dp"
+        android:layout_marginTop="60dp"
+        app:layout_constraintTop_toTopOf="@+id/txtUltimosRegistros"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteX="1dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

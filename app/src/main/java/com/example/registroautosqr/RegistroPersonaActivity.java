@@ -10,11 +10,14 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 
 public class RegistroPersonaActivity extends AppCompatActivity {
 
-    private DatabaseManager dbManager;
     private Spinner spinnerCarrera;
     private ArrayList<String> listaCarreras;
 
@@ -22,8 +25,6 @@ public class RegistroPersonaActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registro_persona);
-
-        dbManager = new DatabaseManager(this);
 
         EditText edtNombre = findViewById(R.id.edtNombre);
         EditText edtApellido = findViewById(R.id.edtApellido);
@@ -51,8 +52,7 @@ public class RegistroPersonaActivity extends AppCompatActivity {
                     return;
                 }
 
-                long resultado = dbManager.insertarPersona(nombre, apellido, carrera, ciclo, dni, telefono);
-                if (resultado > 0) {
+                if (registrarPersona(nombre, apellido, carrera, ciclo, dni, telefono)) {
                     Toast.makeText(RegistroPersonaActivity.this, "Persona registrada exitosamente", Toast.LENGTH_SHORT).show();
                     edtNombre.setText("");
                     edtApellido.setText("");
@@ -68,7 +68,7 @@ public class RegistroPersonaActivity extends AppCompatActivity {
     }
 
     private void cargarCarreras() {
-        listaCarreras = dbManager.obtenerCarreras(); // Obtén la lista de carreras usando DatabaseManager
+        listaCarreras = obtenerCarrerasRemotas(); // Obtén la lista de carreras desde la base de datos remota
 
         // Configurar el adapter del Spinner
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, listaCarreras);
@@ -76,4 +76,64 @@ public class RegistroPersonaActivity extends AppCompatActivity {
         spinnerCarrera.setAdapter(adapter);
     }
 
+    private ArrayList<String> obtenerCarrerasRemotas() {
+        ArrayList<String> carreras = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = new ConexionSQL().conectionclass();
+            String query = "SELECT nombre_carrera FROM carrera";
+            stmt = connection.prepareStatement(query);
+            resultSet = stmt.executeQuery();
+
+            while (resultSet.next()) {
+                carreras.add(resultSet.getString("nombre_carrera"));
+            }
+        } catch (SQLException e) {
+            Toast.makeText(this, "Error al cargar carreras", Toast.LENGTH_SHORT).show();
+        } finally {
+            try {
+                if (resultSet != null) resultSet.close();
+                if (stmt != null) stmt.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return carreras;
+    }
+
+    private boolean registrarPersona(String nombre, String apellido, String carrera, String ciclo, String dni, String telefono) {
+        Connection connection = null;
+        PreparedStatement stmt = null;
+
+        try {
+            connection = new ConexionSQL().conectionclass();
+            String query = "INSERT INTO persona (nombre, apellido, carrera, ciclo, dni, telefono) VALUES (?, ?, ?, ?, ?, ?)";
+            stmt = connection.prepareStatement(query);
+            stmt.setString(1, nombre);
+            stmt.setString(2, apellido);
+            stmt.setString(3, carrera);
+            stmt.setString(4, ciclo);
+            stmt.setString(5, dni);
+            stmt.setString(6, telefono);
+
+            int rowsInserted = stmt.executeUpdate();
+            return rowsInserted > 0;
+        } catch (SQLException e) {
+            Toast.makeText(this, "Error al registrar persona", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+            return false;
+        } finally {
+            try {
+                if (stmt != null) stmt.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
